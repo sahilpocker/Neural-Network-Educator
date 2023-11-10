@@ -1,2 +1,2 @@
 tensorflow
-streamlit-canvas
+streamlit-drawable-canvas
