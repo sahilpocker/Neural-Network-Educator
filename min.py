@@ -5,6 +5,9 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.utils import to_categorical
 from streamlit_drawable_canvas import st_canvas
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPooling2D, Dropout
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.utils import to_categorical
 import matplotlib.pyplot as plt
 
 from PIL import Image, ImageOps
@@ -173,12 +176,128 @@ def beginner_page():
         else:
             st.error('Please draw a digit to predict.')
 
-def advanced_page():
-    st.title('Advanced Features')
+def build_advanced_model(activation, neurons_per_layer, dropout_rate):
+    model = Sequential()
+    model.add(Flatten(input_shape=(28, 28)))  # Flatten the input
+
+    # Add layers based on the dictionary
+    for layer, neurons in neurons_per_layer.items():
+        model.add(Dense(neurons, activation=activation))
+        model.add(Dropout(dropout_rate))
+
+    model.add(Dense(10, activation='softmax'))  # Output layer
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+def build_advanced_cnn_model(activation, neurons_per_layer, filters, kernel_size, dropout_rate):
+    model = Sequential()
     
+    # Convolutional Layer
+    model.add(Conv2D(filters, kernel_size=(kernel_size, kernel_size), activation=activation, input_shape=(28, 28, 1)))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(dropout_rate))
+
+    # Dense Layers based on the dictionary
+    model.add(Flatten())
+    for layer, neurons in neurons_per_layer.items():
+        model.add(Dense(neurons, activation=activation))
+        model.add(Dropout(dropout_rate))
+
+    model.add(Dense(10, activation='softmax'))  # Output layer
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+def advanced_page():
     if st.button('Go Back to Home'):
         st.session_state['page'] = 'Home'
         st.experimental_rerun()
+
+    st.title('Advanced Neural Network Exploration')
+
+    model_type = st.selectbox('Choose model type:', ['Standard Neural Network', 'CNN'])
+
+    activation = st.selectbox('Choose activation function:', ['relu', 'sigmoid', 'tanh'])
+    layers = st.slider('Select number of layers:', 1, 5, 2)
+
+    neurons_per_layer = {}
+    for i in range(layers):
+        neurons_per_layer[f'layer_{i+1}'] = st.slider(f'Select number of neurons for Layer {i+1}:', 32, 512, 128, 32)
+
+    dropout_rate = st.slider('Select dropout rate:', 0.0, 0.9, 0.5, 0.1)
+
+    if model_type == 'CNN':
+        filters = st.slider('Select number of filters:', 16, 128, 32, 16)
+        kernel_size = st.slider('Select kernel size:', 2, 5, 3)
+
+     # Slider for test-train split
+    test_size = st.slider('Select Test Size Ratio:', min_value=0.1, max_value=0.9, value=0.2, step=0.05)
+
+    # Slider for number of epochs
+    epochs = st.slider('Select Number of Epochs:', min_value=1, max_value=100, value=5)
+
+    # Button to load data
+    if st.button('Load Data'):
+        st.session_state['train_images'], st.session_state['train_labels'], \
+        st.session_state['test_images'], st.session_state['test_labels'] = load_mnist_data()
+        st.session_state['data_loaded'] = True
+        st.success('Data loaded successfully!')
+
+    if st.button('Visualize Data'):
+        st.session_state['visualize'] = True
+        st.session_state['trained'] = False
+
+    if 'visualize' in st.session_state and st.session_state['visualize']:
+        if 'train_images' in st.session_state and 'train_labels' in st.session_state:
+            visualize_data(st.session_state['train_images'], st.session_state['train_labels'])
+        else:
+            st.error('Data not loaded. Please load the data first.')
+
+    if st.button('Start Training'):
+        with st.spinner('Training in progress...'):
+            if model_type == 'Standard Neural Network':
+                model = build_advanced_model(activation, neurons_per_layer, dropout_rate)
+            else:
+                model = build_advanced_cnn_model(activation, neurons_per_layer, filters, kernel_size, dropout_rate)
+            history = model.fit(st.session_state['train_images'], st.session_state['train_labels'],
+                                validation_split=test_size, epochs=epochs, verbose=0)
+            st.session_state['model'] = model
+            st.session_state['training_history'] = history
+            st.session_state['trained'] = True
+            st.success('Training completed!')
+
+
+    # [Rest of the visualization and prediction code]
+
+    if 'trained' in st.session_state and st.session_state['trained']:
+        plot_training_history(st.session_state['training_history'])
+
+# Canvas for drawing the digit
+    st.write('Draw a digit below and press Submit:')
+    canvas_result = st_canvas(
+        fill_color='white',
+        stroke_width=10,
+        stroke_color='black',
+        background_color='white',
+        height=150,
+        width=150,
+        drawing_mode='freedraw',
+        key='canvas'
+    )
+
+    # Submit button for prediction
+    if st.button('Submit'):
+        if canvas_result.image_data is not None:
+            if 'model' in st.session_state:
+                # Convert the canvas result into a PIL Image and predict
+                image = Image.fromarray((canvas_result.image_data).astype('uint8'), mode='RGBA')
+                preprocessed_image = preprocess_image(image)
+                prediction = st.session_state['model'].predict(preprocessed_image)
+                st.write('Predicted digit:', np.argmax(prediction))
+            else:
+                st.error('Please train the model before making predictions.')
+        else:
+            st.error('Please draw a digit to predict.')
+
 
 def visualize_data(images, labels):
     st.write("Sample Images from the Dataset:")
