@@ -4,7 +4,6 @@ from tensorflow.keras.datasets import mnist
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.callbacks import LambdaCallback
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image, ImageOps
 
@@ -43,6 +42,37 @@ def load_mnist_data():
 
 # Streamlit UI
 def main():
+    if 'page' not in st.session_state:
+        st.session_state['page'] = 'Home'
+
+    page = st.session_state['page']
+
+    if page == "Home":
+        home_page()
+    elif page == "Beginner":
+        beginner_page()
+    elif page == "Advanced":
+        advanced_page()
+
+
+def home_page():
+    st.title('Welcome to the MNIST Classifier App')
+    if st.button('Beginner'):
+        st.session_state['page'] = 'Beginner'
+        st.experimental_rerun() #to change state in only one click
+
+    if st.button('Advanced'):
+        st.session_state['page'] = 'Advanced'
+        st.experimental_rerun()
+
+
+def beginner_page():
+
+    if st.button('Go Back to Home'):
+        st.session_state['page'] = 'Home'
+        st.experimental_rerun()
+
+
     st.title('Handwritten Digit Classification with MNIST')
 
     # Choice of activation function
@@ -103,6 +133,14 @@ def main():
                 st.error('Please train the model before making predictions.')
         else:
             st.error('Please draw a digit to predict.')
+
+def advanced_page():
+    st.title('Advanced Features')
+    
+    if st.button('Go Back to Home'):
+        st.session_state['page'] = 'Home'
+        st.experimental_rerun()
+
 
 if __name__ == '__main__':
     main()
