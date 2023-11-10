@@ -5,6 +5,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.utils import to_categorical
 from streamlit_drawable_canvas import st_canvas
+import matplotlib.pyplot as plt
+
 from PIL import Image, ImageOps
 
 # Define the preprocess function
@@ -42,6 +44,8 @@ def load_mnist_data():
 
 # Streamlit UI
 def main():
+    st.set_page_config(layout="wide")
+
     if 'page' not in st.session_state:
         st.session_state['page'] = 'Home'
 
@@ -56,14 +60,35 @@ def main():
 
 
 def home_page():
-    st.title('Welcome to the MNIST Classifier App')
-    if st.button('Beginner'):
-        st.session_state['page'] = 'Beginner'
-        st.experimental_rerun() #to change state in only one click
+    st.write("""
+    <style>
+    .big-font {
+        font-size:30px !important;
+        font-family: 'Helvetica', sans-serif;
+    }
+    .medium-font {
+        font-size:20px !important;
+        font-family: 'Helvetica', sans-serif;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    if st.button('Advanced'):
-        st.session_state['page'] = 'Advanced'
-        st.experimental_rerun()
+    st.markdown('<p class="big-font">Welcome to our Neural Network Education App!</p>', unsafe_allow_html=True)
+    st.markdown("<p class='medium-font'>Whether you're just starting or have some experience, we've tailored our learning paths for your needs. Choose your expertise level below to begin exploring the fascinating world of neural networks.</p>", unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1,1])
+    
+    with col1:
+        st.markdown("<p class='medium-font'>New to neural networks? Start here to explore datasets, build basic models, and test your understanding with simplified parameters.</p>", unsafe_allow_html=True)
+        if st.button('Beginner'):
+            st.session_state['page'] = 'Beginner'
+            st.experimental_rerun() #to change state in only one click
+
+    with col2:
+        st.markdown("<p class='medium-font'>Ready for a deeper dive? Unlock more features like multiple hidden layers and dropout options to enhance your neural network understanding.</p>", unsafe_allow_html=True)
+        if st.button('Advanced'):
+            st.session_state['page'] = 'Advanced'
+            st.experimental_rerun() #to change state in only one click
 
 
 def beginner_page():
@@ -94,17 +119,31 @@ def beginner_page():
         st.session_state['data_loaded'] = True
         st.success('Data loaded successfully!')
 
+    if st.button('Visualize Data'):
+        st.session_state['visualize'] = True
+        st.session_state['trained'] = False
+
+    if 'visualize' in st.session_state and st.session_state['visualize']:
+        if 'train_images' in st.session_state and 'train_labels' in st.session_state:
+            visualize_data(st.session_state['train_images'], st.session_state['train_labels'])
+        else:
+            st.error('Data not loaded. Please load the data first.')
+
+
     # Start training button
     if st.button('Start Training'):
-        if not st.session_state.get('data_loaded', False):
-            st.error('Error: Data not loaded. Please load the data before training.')
-        else:
+            st.session_state['visualize'] = False  # Hide visualization
             with st.spinner('Training in progress...'):
                 model = build_model(activation, neurons)
-                model.fit(st.session_state['train_images'], st.session_state['train_labels'],
-                          validation_split=test_size, epochs=epochs, verbose=0)
+                history = model.fit(st.session_state['train_images'], st.session_state['train_labels'],
+                                    validation_split=test_size, epochs=epochs, verbose=0)
                 st.session_state['model'] = model
+                st.session_state['training_history'] = history
+                st.session_state['trained'] = True
                 st.success('Training completed!')
+
+    if 'trained' in st.session_state and st.session_state['trained']:
+        plot_training_history(st.session_state['training_history'])
 
 
     # Canvas for drawing the digit
@@ -141,6 +180,36 @@ def advanced_page():
         st.session_state['page'] = 'Home'
         st.experimental_rerun()
 
+def visualize_data(images, labels):
+    st.write("Sample Images from the Dataset:")
+    fig, axes = plt.subplots(2, 5, figsize=(10, 4))
+    for i, ax in enumerate(axes.flatten()):
+        ax.imshow(images[i], cmap='gray')
+        ax.set_title(f'Label: {np.argmax(labels[i])}')
+        ax.axis('off')
+    st.pyplot(fig)
+
+def plot_training_history(history):
+    st.write("Training and Validation Metrics:")
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+
+    epochs_range = range(len(acc))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+    ax1.plot(epochs_range, acc, label='Training Accuracy')
+    ax1.plot(epochs_range, val_acc, label='Validation Accuracy')
+    ax1.set_title('Training and Validation Accuracy')
+    ax1.legend()
+
+    ax2.plot(epochs_range, loss, label='Training Loss')
+    ax2.plot(epochs_range, val_loss, label='Validation Loss')
+    ax2.set_title('Training and Validation Loss')
+    ax2.legend()
+
+    st.pyplot(fig)
 
 if __name__ == '__main__':
     main()
