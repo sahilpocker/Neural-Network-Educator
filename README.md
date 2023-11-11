@@ -25,7 +25,7 @@ The Neural Network Educator application is organized into several modules, each 
 ```
 neural_network_app/
 │
-├── app.py                   # Main Application Entry Point
+├── min.py                   # Main Application Entry Point
 ├── image_preprocessing.py   # Image Preprocessing Functions
 ├── model.py                 # Neural Network Model Building Functions
 ├── data_loader.py           # MNIST Dataset Loading and Preprocessing
